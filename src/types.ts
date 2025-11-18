@@ -32,3 +32,17 @@ export interface GameMap {
   gridType: GridType;
   cells: MapCell[];
 }
+
+export interface Player {
+  id: string;
+  name: string;
+  color: string;
+  x: number;
+  y: number;
+}
+
+export interface GameState {
+  mapId: string;
+  players: Player[];
+  currentPlayerIndex: number;
+}

@@ -4,12 +4,13 @@ import CardCreator from './components/CardCreator'
 import CardList from './components/CardList'
 import MapEditor from './components/MapEditor'
 import MapVisualizer from './components/MapVisualizer'
+import GamePlay from './components/GamePlay'
 import './App.css'
 
 function App() {
   const [cards, setCards] = useState<Card[]>([])
   const [maps, setMaps] = useState<GameMap[]>([])
-  const [activeTab, setActiveTab] = useState<'cards' | 'maps' | 'visualizer'>('cards')
+  const [activeTab, setActiveTab] = useState<'cards' | 'maps' | 'visualizer' | 'play'>('cards')
 
   const handleAddCard = (card: Card) => {
     setCards([...cards, card])
@@ -62,6 +63,12 @@ function App() {
           >
             Map Visualizer
           </button>
+          <button
+            className={activeTab === 'play' ? 'tab active' : 'tab'}
+            onClick={() => setActiveTab('play')}
+          >
+            Play Game
+          </button>
         </div>
       </header>
 
@@ -96,6 +103,12 @@ function App() {
         {activeTab === 'visualizer' && (
           <div className="maps-section">
             <MapVisualizer maps={maps} />
+          </div>
+        )}
+
+        {activeTab === 'play' && (
+          <div className="maps-section">
+            <GamePlay maps={maps} />
           </div>
         )}
       </main>
