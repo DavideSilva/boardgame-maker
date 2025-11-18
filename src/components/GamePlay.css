@@ -418,6 +418,103 @@
   gap: 10px;
 }
 
+/* Available Cards */
+.available-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.game-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  border-color: #fff;
+}
+
+.game-card-name {
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.game-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.game-card-action {
+  background-color: rgba(255,255,255,0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: white;
+  text-transform: capitalize;
+}
+
+.no-cards {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+/* Action Log */
+.action-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.log-entry {
+  font-size: 12px;
+  color: #555;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.no-actions {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 10px;
+}
+
 .game-instructions {
   display: flex;
   flex-direction: column;

@@ -108,7 +108,7 @@ function App() {
 
         {activeTab === 'play' && (
           <div className="maps-section">
-            <GamePlay maps={maps} />
+            <GamePlay maps={maps} cards={cards} />
           </div>
         )}
       </main>

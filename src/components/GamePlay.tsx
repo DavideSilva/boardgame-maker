@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { GameMap, Player, CellType } from '../types'
+import { GameMap, Player, CellType, Card, Action } from '../types'
 import './GamePlay.css'
 
 interface GamePlayProps {
   maps: GameMap[]
+  cards: Card[]
 }
 
 const cellTypeColors: Record<CellType, string> = {
@@ -19,12 +20,13 @@ const playerColors = [
   '#9b59b6', '#1abc9c', '#e67e22', '#34495e'
 ]
 
-function GamePlay({ maps }: GamePlayProps) {
+function GamePlay({ maps, cards }: GamePlayProps) {
   const [selectedMap, setSelectedMap] = useState<GameMap | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0)
   const [newPlayerName, setNewPlayerName] = useState('')
   const [gameStarted, setGameStarted] = useState(false)
+  const [actionLog, setActionLog] = useState<string[]>([])
 
   const handleStartGame = (map: GameMap) => {
     setSelectedMap(map)
@@ -103,6 +105,79 @@ function GamePlay({ maps }: GamePlayProps) {
     setSelectedMap(null)
     setPlayers([])
     setCurrentPlayerIndex(0)
+    setActionLog([])
+  }
+
+  const executeCardAction = (action: Action, player: Player): Player => {
+    if (!selectedMap) return player
+
+    let newX = player.x
+    let newY = player.y
+
+    switch (action.type) {
+      case 'move': {
+        const moveValue = typeof action.value === 'number' ? action.value : parseInt(action.value as string) || 0
+        // For simplicity, move in a direction: positive = right/down, negative = left/up
+        // You can extend this to support directional movement
+        const direction = moveValue > 0 ? 1 : -1
+        const distance = Math.abs(moveValue)
+
+        // Try to move right/left first
+        newX = Math.max(0, Math.min(selectedMap.width - 1, player.x + distance * direction))
+
+        // Check if target is blocked
+        const targetCell = selectedMap.cells.find(c => c.x === newX && c.y === newY)
+        if (targetCell?.type === 'blocked') {
+          setActionLog(prev => [...prev, `${player.name} tried to move but path is blocked!`])
+          return player
+        }
+
+        setActionLog(prev => [...prev, `${player.name} moved from (${player.x},${player.y}) to (${newX},${newY})`])
+        break
+      }
+
+      case 'attack':
+        setActionLog(prev => [...prev, `${player.name} attacks for ${action.value} damage!`])
+        break
+
+      case 'heal':
+        setActionLog(prev => [...prev, `${player.name} heals for ${action.value} HP!`])
+        break
+
+      case 'draw':
+        setActionLog(prev => [...prev, `${player.name} draws ${action.value} cards!`])
+        break
+
+      case 'custom':
+        setActionLog(prev => [...prev, `${player.name} uses ${action.description}!`])
+        break
+    }
+
+    return { ...player, x: newX, y: newY }
+  }
+
+  const handlePlayCard = (card: Card) => {
+    if (!gameStarted || players.length === 0) return
+
+    const currentPlayer = players[currentPlayerIndex]
+    let updatedPlayer = { ...currentPlayer }
+
+    setActionLog(prev => [...prev, `--- ${currentPlayer.name} plays "${card.name}" ---`])
+
+    // Execute all actions on the card
+    card.actions.forEach(action => {
+      updatedPlayer = executeCardAction(action, updatedPlayer)
+    })
+
+    // Update the player in the array
+    const updatedPlayers = players.map((player, idx) =>
+      idx === currentPlayerIndex ? updatedPlayer : player
+    )
+
+    setPlayers(updatedPlayers)
+
+    // Next player's turn
+    setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
   }
 
   const getCellAtPosition = (x: number, y: number) => {
@@ -368,12 +443,50 @@ function GamePlay({ maps }: GamePlayProps) {
                 ))}
               </div>
 
+              <div className="available-cards">
+                <h4>Available Cards ({cards.length})</h4>
+                {cards.length === 0 ? (
+                  <p className="no-cards">No cards available. Create cards in the Cards tab!</p>
+                ) : (
+                  <div className="cards-grid">
+                    {cards.map((card) => (
+                      <div key={card.id} className="game-card" onClick={() => handlePlayCard(card)}>
+                        <div className="game-card-name">{card.name}</div>
+                        <div className="game-card-actions">
+                          {card.actions.map((action) => (
+                            <div key={action.id} className="game-card-action">
+                              {action.type}: {action.value}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="action-log">
+                <h4>Action Log</h4>
+                <div className="log-entries">
+                  {actionLog.length === 0 ? (
+                    <p className="no-actions">No actions yet</p>
+                  ) : (
+                    actionLog.slice(-8).reverse().map((log, idx) => (
+                      <div key={idx} className="log-entry">
+                        {log}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
               <div className="game-instructions">
                 <h4>Instructions</h4>
                 <ul>
                   <li>Click any cell to move the current player</li>
+                  <li>Click a card to play it (affects current player)</li>
                   <li>Cannot move to blocked cells</li>
-                  <li>Turn automatically passes after each move</li>
+                  <li>Turn automatically passes after each action</li>
                 </ul>
               </div>
             </div>
