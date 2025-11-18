@@ -16,6 +16,8 @@ export interface Card {
 
 export type CellType = 'empty' | 'blocked' | 'special' | 'start' | 'end';
 
+export type GridType = 'square' | 'hexagonal';
+
 export interface MapCell {
   x: number;
   y: number;
@@ -27,5 +29,6 @@ export interface GameMap {
   name: string;
   width: number;
   height: number;
+  gridType: GridType;
   cells: MapCell[];
 }

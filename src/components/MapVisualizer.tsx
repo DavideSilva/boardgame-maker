@@ -40,6 +40,42 @@ function MapVisualizer({ maps }: MapVisualizerProps) {
   const renderMapPreview = (map: GameMap) => {
     const cellSize = Math.min(20, 200 / Math.max(map.width, map.height))
 
+    if (map.gridType === 'hexagonal') {
+      const hexSize = cellSize * 0.9
+      return (
+        <div className="hex-preview">
+          {Array.from({ length: map.height }).map((_, y) => (
+            <div
+              key={y}
+              className="hex-preview-row"
+              style={{
+                marginLeft: y % 2 === 1 ? `${hexSize * 0.5}px` : '0',
+                marginBottom: `-${hexSize * 0.25}px`
+              }}
+            >
+              {Array.from({ length: map.width }).map((_, x) => {
+                const cell = getCellAtPosition(map, x, y)
+                return (
+                  <div
+                    key={`${x}-${y}`}
+                    className="hex-preview-cell"
+                    style={{ width: `${hexSize}px`, height: `${hexSize * 1.15}px` }}
+                  >
+                    <div
+                      className="hex-preview-inner"
+                      style={{
+                        backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                      }}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )
+    }
+
     return (
       <div
         className="map-preview"
@@ -95,7 +131,10 @@ function MapVisualizer({ maps }: MapVisualizerProps) {
                 >
                   <div className="map-card-header">
                     <h3>{map.name}</h3>
-                    <span className="map-dimensions">{map.width}×{map.height}</span>
+                    <div className="map-card-badges">
+                      <span className="map-dimensions">{map.width}×{map.height}</span>
+                      <span className="map-grid-type">{map.gridType}</span>
+                    </div>
                   </div>
 
                   {renderMapPreview(map)}
@@ -143,7 +182,7 @@ function MapVisualizer({ maps }: MapVisualizerProps) {
             <div>
               <h3>{selectedMap.name}</h3>
               <p className="detail-subtitle">
-                {selectedMap.width}×{selectedMap.height} grid
+                {selectedMap.width}×{selectedMap.height} {selectedMap.gridType} grid
               </p>
             </div>
             <button
@@ -156,32 +195,61 @@ function MapVisualizer({ maps }: MapVisualizerProps) {
 
           <div className="detail-content">
             <div className="detail-grid-container">
-              <div
-                className="detail-grid"
-                style={{
-                  gridTemplateColumns: `repeat(${selectedMap.width}, 50px)`,
-                  gridTemplateRows: `repeat(${selectedMap.height}, 50px)`
-                }}
-              >
-                {Array.from({ length: selectedMap.height }).map((_, y) =>
-                  Array.from({ length: selectedMap.width }).map((_, x) => {
-                    const cell = getCellAtPosition(selectedMap, x, y)
-                    return (
-                      <div
-                        key={`${x}-${y}`}
-                        className="detail-cell"
-                        style={{
-                          backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
-                        }}
-                        title={`Position: (${x}, ${y}) - Type: ${cell?.type || 'empty'}`}
-                      >
-                        {cell?.type === 'start' && <span className="cell-marker">S</span>}
-                        {cell?.type === 'end' && <span className="cell-marker">E</span>}
-                      </div>
-                    )
-                  })
-                )}
-              </div>
+              {selectedMap.gridType === 'square' ? (
+                <div
+                  className="detail-grid"
+                  style={{
+                    gridTemplateColumns: `repeat(${selectedMap.width}, 50px)`,
+                    gridTemplateRows: `repeat(${selectedMap.height}, 50px)`
+                  }}
+                >
+                  {Array.from({ length: selectedMap.height }).map((_, y) =>
+                    Array.from({ length: selectedMap.width }).map((_, x) => {
+                      const cell = getCellAtPosition(selectedMap, x, y)
+                      return (
+                        <div
+                          key={`${x}-${y}`}
+                          className="detail-cell"
+                          style={{
+                            backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                          }}
+                          title={`Position: (${x}, ${y}) - Type: ${cell?.type || 'empty'}`}
+                        >
+                          {cell?.type === 'start' && <span className="cell-marker">S</span>}
+                          {cell?.type === 'end' && <span className="cell-marker">E</span>}
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              ) : (
+                <div className="detail-hex-grid">
+                  {Array.from({ length: selectedMap.height }).map((_, y) => (
+                    <div key={y} className="detail-hex-row" style={{ marginLeft: y % 2 === 1 ? '34px' : '0' }}>
+                      {Array.from({ length: selectedMap.width }).map((_, x) => {
+                        const cell = getCellAtPosition(selectedMap, x, y)
+                        return (
+                          <div
+                            key={`${x}-${y}`}
+                            className="detail-hex-cell"
+                            title={`Position: (${x}, ${y}) - Type: ${cell?.type || 'empty'}`}
+                          >
+                            <div
+                              className="detail-hex-inner"
+                              style={{
+                                backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                              }}
+                            >
+                              {cell?.type === 'start' && <span className="hex-marker">S</span>}
+                              {cell?.type === 'end' && <span className="hex-marker">E</span>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="detail-sidebar">
@@ -191,6 +259,10 @@ function MapVisualizer({ maps }: MapVisualizerProps) {
                   <div className="info-item">
                     <span className="info-label">Name:</span>
                     <span className="info-value">{selectedMap.name}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Grid Type:</span>
+                    <span className="info-value" style={{ textTransform: 'capitalize' }}>{selectedMap.gridType}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Dimensions:</span>

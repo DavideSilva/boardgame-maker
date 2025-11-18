@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GameMap, MapCell, CellType } from '../types'
+import { GameMap, MapCell, CellType, GridType } from '../types'
 import './MapEditor.css'
 
 interface MapEditorProps {
@@ -22,6 +22,7 @@ function MapEditor({ maps, onSaveMap, onDeleteMap }: MapEditorProps) {
   const [mapName, setMapName] = useState('')
   const [width, setWidth] = useState(8)
   const [height, setHeight] = useState(8)
+  const [gridType, setGridType] = useState<GridType>('square')
   const [selectedCellType, setSelectedCellType] = useState<CellType>('empty')
   const [currentMap, setCurrentMap] = useState<GameMap | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -39,6 +40,7 @@ function MapEditor({ maps, onSaveMap, onDeleteMap }: MapEditorProps) {
       name: mapName || 'Untitled Map',
       width,
       height,
+      gridType,
       cells
     }
 
@@ -91,6 +93,7 @@ function MapEditor({ maps, onSaveMap, onDeleteMap }: MapEditorProps) {
     setMapName(map.name)
     setWidth(map.width)
     setHeight(map.height)
+    setGridType(map.gridType)
     setIsEditing(true)
   }
 
@@ -112,6 +115,17 @@ function MapEditor({ maps, onSaveMap, onDeleteMap }: MapEditorProps) {
               onChange={(e) => setMapName(e.target.value)}
               placeholder="Enter map name"
             />
+          </div>
+
+          <div className="form-group">
+            <label>Grid Type</label>
+            <select
+              value={gridType}
+              onChange={(e) => setGridType(e.target.value as GridType)}
+            >
+              <option value="square">Square Grid</option>
+              <option value="hexagonal">Hexagonal Grid</option>
+            </select>
           </div>
 
           <div className="dimensions">
@@ -206,33 +220,63 @@ function MapEditor({ maps, onSaveMap, onDeleteMap }: MapEditorProps) {
           </div>
 
           <div className="grid-container">
-            <div
-              className="grid"
-              style={{
-                gridTemplateColumns: `repeat(${currentMap?.width}, 40px)`,
-                gridTemplateRows: `repeat(${currentMap?.height}, 40px)`
-              }}
-            >
-              {currentMap && Array.from({ length: currentMap.height }).map((_, y) =>
-                Array.from({ length: currentMap.width }).map((_, x) => {
-                  const cell = getCellAtPosition(x, y)
-                  return (
-                    <div
-                      key={`${x}-${y}`}
-                      className="grid-cell"
-                      style={{
-                        backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
-                      }}
-                      onClick={() => handleCellClick(x, y)}
-                      title={`${x}, ${y} - ${cell?.type || 'empty'}`}
-                    >
-                      {cell?.type === 'start' && 'S'}
-                      {cell?.type === 'end' && 'E'}
-                    </div>
-                  )
-                })
-              )}
-            </div>
+            {currentMap?.gridType === 'square' ? (
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${currentMap.width}, 40px)`,
+                  gridTemplateRows: `repeat(${currentMap.height}, 40px)`
+                }}
+              >
+                {Array.from({ length: currentMap.height }).map((_, y) =>
+                  Array.from({ length: currentMap.width }).map((_, x) => {
+                    const cell = getCellAtPosition(x, y)
+                    return (
+                      <div
+                        key={`${x}-${y}`}
+                        className="grid-cell"
+                        style={{
+                          backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                        }}
+                        onClick={() => handleCellClick(x, y)}
+                        title={`${x}, ${y} - ${cell?.type || 'empty'}`}
+                      >
+                        {cell?.type === 'start' && 'S'}
+                        {cell?.type === 'end' && 'E'}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            ) : (
+              <div className="hex-grid">
+                {currentMap && Array.from({ length: currentMap.height }).map((_, y) => (
+                  <div key={y} className="hex-row" style={{ marginLeft: y % 2 === 1 ? '27px' : '0' }}>
+                    {Array.from({ length: currentMap.width }).map((_, x) => {
+                      const cell = getCellAtPosition(x, y)
+                      return (
+                        <div
+                          key={`${x}-${y}`}
+                          className="hex-cell"
+                          onClick={() => handleCellClick(x, y)}
+                          title={`${x}, ${y} - ${cell?.type || 'empty'}`}
+                        >
+                          <div
+                            className="hex-inner"
+                            style={{
+                              backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                            }}
+                          >
+                            {cell?.type === 'start' && <span className="hex-marker">S</span>}
+                            {cell?.type === 'end' && <span className="hex-marker">E</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="legend">
