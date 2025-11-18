@@ -250,7 +250,7 @@
   justify-content: center;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   transition: opacity 0.1s;
-  border: 2px solid #34495e;
+  filter: drop-shadow(0 0 0 2px #34495e);
   font-weight: bold;
   font-size: 18px;
 }
