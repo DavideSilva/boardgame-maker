@@ -27,6 +27,48 @@ function GamePlay({ maps, cards }: GamePlayProps) {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [gameStarted, setGameStarted] = useState(false)
   const [actionLog, setActionLog] = useState<string[]>([])
+  const [pendingMovement, setPendingMovement] = useState<number | null>(null)
+  const [validMoveSpaces, setValidMoveSpaces] = useState<{x: number, y: number}[]>([])
+
+  // Calculate Manhattan distance for square grids
+  const calculateSquareDistance = (x1: number, y1: number, x2: number, y2: number): number => {
+    return Math.abs(x1 - x2) + Math.abs(y1 - y2)
+  }
+
+  // Calculate hex distance for hexagonal grids with offset coordinates
+  const calculateHexDistance = (x1: number, y1: number, x2: number, y2: number): number => {
+    // Convert offset coordinates to cube coordinates for easier distance calculation
+    const q1 = x1 - (y1 - (y1 & 1)) / 2
+    const r1 = y1
+    const q2 = x2 - (y2 - (y2 & 1)) / 2
+    const r2 = y2
+
+    return (Math.abs(q1 - q2) + Math.abs(q1 + r1 - q2 - r2) + Math.abs(r1 - r2)) / 2
+  }
+
+  // Get all valid spaces within movement range
+  const getValidMoveSpaces = (player: Player, moveRange: number): {x: number, y: number}[] => {
+    if (!selectedMap) return []
+
+    const validSpaces: {x: number, y: number}[] = []
+    const distanceFunc = selectedMap.gridType === 'square' ? calculateSquareDistance : calculateHexDistance
+
+    for (let y = 0; y < selectedMap.height; y++) {
+      for (let x = 0; x < selectedMap.width; x++) {
+        const distance = distanceFunc(player.x, player.y, x, y)
+
+        if (distance > 0 && distance <= moveRange) {
+          const cell = selectedMap.cells.find(c => c.x === x && c.y === y)
+          // Don't include blocked cells or current position
+          if (!cell || cell.type !== 'blocked') {
+            validSpaces.push({ x, y })
+          }
+        }
+      }
+    }
+
+    return validSpaces
+  }
 
   const handleStartGame = (map: GameMap) => {
     setSelectedMap(map)
@@ -78,7 +120,36 @@ function GamePlay({ maps, cards }: GamePlayProps) {
       return
     }
 
-    // Move current player to clicked position
+    // If there's a pending movement from a card, check if this is a valid destination
+    if (pendingMovement !== null) {
+      const isValidMove = validMoveSpaces.some(space => space.x === x && space.y === y)
+
+      if (!isValidMove) {
+        alert(`Cannot move there! Movement range is ${pendingMovement}.`)
+        return
+      }
+
+      // Execute the movement
+      const currentPlayer = players[currentPlayerIndex]
+      setActionLog(prev => [...prev, `${currentPlayer.name} moved from (${currentPlayer.x},${currentPlayer.y}) to (${x},${y})`])
+
+      const updatedPlayers = players.map((player, idx) => {
+        if (idx === currentPlayerIndex) {
+          return { ...player, x, y }
+        }
+        return player
+      })
+
+      setPlayers(updatedPlayers)
+      setPendingMovement(null)
+      setValidMoveSpaces([])
+
+      // Next player's turn
+      setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+      return
+    }
+
+    // Regular free movement (not from a card)
     const updatedPlayers = players.map((player, idx) => {
       if (idx === currentPlayerIndex) {
         return { ...player, x, y }
@@ -108,32 +179,26 @@ function GamePlay({ maps, cards }: GamePlayProps) {
     setActionLog([])
   }
 
-  const executeCardAction = (action: Action, player: Player): Player => {
-    if (!selectedMap) return player
-
-    let newX = player.x
-    let newY = player.y
+  const executeCardAction = (action: Action, player: Player): { player: Player, requiresInput: boolean } => {
+    if (!selectedMap) return { player, requiresInput: false }
 
     switch (action.type) {
       case 'move': {
         const moveValue = typeof action.value === 'number' ? action.value : parseInt(action.value as string) || 0
-        // For simplicity, move in a direction: positive = right/down, negative = left/up
-        // You can extend this to support directional movement
-        const direction = moveValue > 0 ? 1 : -1
         const distance = Math.abs(moveValue)
 
-        // Try to move right/left first
-        newX = Math.max(0, Math.min(selectedMap.width - 1, player.x + distance * direction))
+        // Set up pending movement - player will click to choose destination
+        const validSpaces = getValidMoveSpaces(player, distance)
 
-        // Check if target is blocked
-        const targetCell = selectedMap.cells.find(c => c.x === newX && c.y === newY)
-        if (targetCell?.type === 'blocked') {
-          setActionLog(prev => [...prev, `${player.name} tried to move but path is blocked!`])
-          return player
+        if (validSpaces.length === 0) {
+          setActionLog(prev => [...prev, `${player.name} cannot move - no valid spaces!`])
+          return { player, requiresInput: false }
         }
 
-        setActionLog(prev => [...prev, `${player.name} moved from (${player.x},${player.y}) to (${newX},${newY})`])
-        break
+        setPendingMovement(distance)
+        setValidMoveSpaces(validSpaces)
+        setActionLog(prev => [...prev, `${player.name} can move up to ${distance} spaces. Click a highlighted space.`])
+        return { player, requiresInput: true }
       }
 
       case 'attack':
@@ -153,21 +218,35 @@ function GamePlay({ maps, cards }: GamePlayProps) {
         break
     }
 
-    return { ...player, x: newX, y: newY }
+    return { player, requiresInput: false }
   }
 
   const handlePlayCard = (card: Card) => {
     if (!gameStarted || players.length === 0) return
 
+    // Don't allow playing cards if there's already a pending movement
+    if (pendingMovement !== null) {
+      alert('Complete the current movement action first!')
+      return
+    }
+
     const currentPlayer = players[currentPlayerIndex]
     let updatedPlayer = { ...currentPlayer }
+    let requiresInput = false
 
     setActionLog(prev => [...prev, `--- ${currentPlayer.name} plays "${card.name}" ---`])
 
     // Execute all actions on the card
-    card.actions.forEach(action => {
-      updatedPlayer = executeCardAction(action, updatedPlayer)
-    })
+    for (const action of card.actions) {
+      const result = executeCardAction(action, updatedPlayer)
+      updatedPlayer = result.player
+
+      // If any action requires input, stop and wait for player interaction
+      if (result.requiresInput) {
+        requiresInput = true
+        break
+      }
+    }
 
     // Update the player in the array
     const updatedPlayers = players.map((player, idx) =>
@@ -176,8 +255,10 @@ function GamePlay({ maps, cards }: GamePlayProps) {
 
     setPlayers(updatedPlayers)
 
-    // Next player's turn
-    setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+    // Only advance turn if no input is required (movement cards wait for click)
+    if (!requiresInput) {
+      setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+    }
   }
 
   const getCellAtPosition = (x: number, y: number) => {
@@ -263,11 +344,12 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                 Array.from({ length: selectedMap.width }).map((_, x) => {
                   const cell = getCellAtPosition(x, y)
                   const cellPlayers = getPlayersAtPosition(x, y)
+                  const isValidMoveSpace = validMoveSpaces.some(space => space.x === x && space.y === y)
 
                   return (
                     <div
                       key={`${x}-${y}`}
-                      className={`game-cell ${gameStarted ? 'clickable' : ''}`}
+                      className={`game-cell ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''}`}
                       style={{
                         backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
                       }}
@@ -310,6 +392,7 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                   {Array.from({ length: selectedMap.width }).map((_, x) => {
                     const cell = getCellAtPosition(x, y)
                     const cellPlayers = getPlayersAtPosition(x, y)
+                    const isValidMoveSpace = validMoveSpaces.some(space => space.x === x && space.y === y)
 
                     return (
                       <div
@@ -319,7 +402,7 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                         title={`(${x}, ${y})`}
                       >
                         <div
-                          className={`game-hex-inner ${gameStarted ? 'clickable' : ''}`}
+                          className={`game-hex-inner ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''}`}
                           style={{
                             backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
                           }}
@@ -483,10 +566,11 @@ function GamePlay({ maps, cards }: GamePlayProps) {
               <div className="game-instructions">
                 <h4>Instructions</h4>
                 <ul>
-                  <li>Click any cell to move the current player</li>
-                  <li>Click a card to play it (affects current player)</li>
+                  <li>Click any cell to move the current player (free movement)</li>
+                  <li>Click a card to play it on the current player</li>
+                  <li>Movement cards highlight valid spaces - click to move</li>
                   <li>Cannot move to blocked cells</li>
-                  <li>Turn automatically passes after each action</li>
+                  <li>Turn passes after completing an action</li>
                 </ul>
               </div>
             </div>
