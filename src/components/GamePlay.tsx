@@ -112,6 +112,11 @@ function GamePlay({ maps, cards }: GamePlayProps) {
   const handleCellClick = (x: number, y: number) => {
     if (!gameStarted || players.length === 0 || !selectedMap) return
 
+    // Only allow movement if there's a pending movement card action
+    if (pendingMovement === null) {
+      return
+    }
+
     const cell = selectedMap.cells.find(c => c.x === x && c.y === y)
 
     // Can't move to blocked cells
@@ -120,36 +125,17 @@ function GamePlay({ maps, cards }: GamePlayProps) {
       return
     }
 
-    // If there's a pending movement from a card, check if this is a valid destination
-    if (pendingMovement !== null) {
-      const isValidMove = validMoveSpaces.some(space => space.x === x && space.y === y)
+    const isValidMove = validMoveSpaces.some(space => space.x === x && space.y === y)
 
-      if (!isValidMove) {
-        alert(`Cannot move there! Movement range is ${pendingMovement}.`)
-        return
-      }
-
-      // Execute the movement
-      const currentPlayer = players[currentPlayerIndex]
-      setActionLog(prev => [...prev, `${currentPlayer.name} moved from (${currentPlayer.x},${currentPlayer.y}) to (${x},${y})`])
-
-      const updatedPlayers = players.map((player, idx) => {
-        if (idx === currentPlayerIndex) {
-          return { ...player, x, y }
-        }
-        return player
-      })
-
-      setPlayers(updatedPlayers)
-      setPendingMovement(null)
-      setValidMoveSpaces([])
-
-      // Next player's turn
-      setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+    if (!isValidMove) {
+      alert(`Cannot move there! Movement range is ${pendingMovement}.`)
       return
     }
 
-    // Regular free movement (not from a card)
+    // Execute the movement
+    const currentPlayer = players[currentPlayerIndex]
+    setActionLog(prev => [...prev, `${currentPlayer.name} moved from (${currentPlayer.x},${currentPlayer.y}) to (${x},${y})`])
+
     const updatedPlayers = players.map((player, idx) => {
       if (idx === currentPlayerIndex) {
         return { ...player, x, y }
@@ -158,6 +144,8 @@ function GamePlay({ maps, cards }: GamePlayProps) {
     })
 
     setPlayers(updatedPlayers)
+    setPendingMovement(null)
+    setValidMoveSpaces([])
 
     // Next player's turn
     setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
@@ -570,11 +558,11 @@ function GamePlay({ maps, cards }: GamePlayProps) {
               <div className="game-instructions">
                 <h4>Instructions</h4>
                 <ul>
-                  <li>Click any cell to move the current player (free movement)</li>
                   <li>Click a card to play it on the current player</li>
                   <li>Movement cards highlight valid spaces - click to move</li>
                   <li>Cannot move to blocked cells</li>
                   <li>Turn passes after completing an action</li>
+                  <li>Players can only move using movement cards</li>
                 </ul>
               </div>
             </div>
