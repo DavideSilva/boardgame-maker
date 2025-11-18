@@ -232,7 +232,7 @@
 }
 
 .game-hex-inner.valid-move {
-  filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 8px #3498db);
+  filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 6px #3498db) drop-shadow(0 0 12px #3498db);
   animation: pulse-hex 1s ease-in-out infinite;
 }
 
@@ -565,10 +565,10 @@
 
 @keyframes pulse-hex {
   0%, 100% {
-    filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 8px #3498db);
+    filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 6px #3498db) drop-shadow(0 0 12px #3498db);
   }
   50% {
-    filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 12px #2980b9);
+    filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 8px #2980b9) drop-shadow(0 0 16px #2980b9);
   }
 }
 

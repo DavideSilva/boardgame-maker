@@ -351,7 +351,9 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                       key={`${x}-${y}`}
                       className={`game-cell ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''}`}
                       style={{
-                        backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                        backgroundColor: isValidMoveSpace
+                          ? '#e3f2fd'
+                          : (cell ? cellTypeColors[cell.type] : cellTypeColors.empty)
                       }}
                       onClick={() => handleCellClick(x, y)}
                       title={`(${x}, ${y})`}
@@ -404,7 +406,9 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                         <div
                           className={`game-hex-inner ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''}`}
                           style={{
-                            backgroundColor: cell ? cellTypeColors[cell.type] : cellTypeColors.empty
+                            backgroundColor: isValidMoveSpace
+                              ? '#e3f2fd'
+                              : (cell ? cellTypeColors[cell.type] : cellTypeColors.empty)
                           }}
                         >
                           {cell?.type === 'start' && <span className="hex-label">S</span>}
