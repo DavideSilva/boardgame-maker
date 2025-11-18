@@ -181,6 +181,11 @@
   animation: pulse 1s ease-in-out infinite;
 }
 
+.game-cell.valid-attack {
+  box-shadow: inset 0 0 0 4px #e74c3c;
+  animation: pulse-attack 1s ease-in-out infinite;
+}
+
 .cell-label {
   color: white;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
@@ -234,6 +239,11 @@
 .game-hex-inner.valid-move {
   filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 6px #3498db) drop-shadow(0 0 12px #3498db);
   animation: pulse-hex 1s ease-in-out infinite;
+}
+
+.game-hex-inner.valid-attack {
+  filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 6px #e74c3c) drop-shadow(0 0 12px #e74c3c);
+  animation: pulse-hex-attack 1s ease-in-out infinite;
 }
 
 .hex-label {
@@ -569,6 +579,24 @@
   }
   50% {
     filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 8px #2980b9) drop-shadow(0 0 16px #2980b9);
+  }
+}
+
+@keyframes pulse-attack {
+  0%, 100% {
+    box-shadow: inset 0 0 0 4px #e74c3c;
+  }
+  50% {
+    box-shadow: inset 0 0 0 6px #c0392b;
+  }
+}
+
+@keyframes pulse-hex-attack {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 6px #e74c3c) drop-shadow(0 0 12px #e74c3c);
+  }
+  50% {
+    filter: drop-shadow(0 0 0 3px #34495e) drop-shadow(0 0 0 8px #c0392b) drop-shadow(0 0 16px #c0392b);
   }
 }
 

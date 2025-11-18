@@ -29,6 +29,8 @@ function GamePlay({ maps, cards }: GamePlayProps) {
   const [actionLog, setActionLog] = useState<string[]>([])
   const [pendingMovement, setPendingMovement] = useState<number | null>(null)
   const [validMoveSpaces, setValidMoveSpaces] = useState<{x: number, y: number}[]>([])
+  const [pendingAttack, setPendingAttack] = useState<number | null>(null)
+  const [validAttackTargets, setValidAttackTargets] = useState<{x: number, y: number}[]>([])
 
   // Calculate Manhattan distance for square grids
   const calculateSquareDistance = (x1: number, y1: number, x2: number, y2: number): number => {
@@ -112,43 +114,72 @@ function GamePlay({ maps, cards }: GamePlayProps) {
   const handleCellClick = (x: number, y: number) => {
     if (!gameStarted || players.length === 0 || !selectedMap) return
 
-    // Only allow movement if there's a pending movement card action
-    if (pendingMovement === null) {
-      return
-    }
+    // Handle pending attack
+    if (pendingAttack !== null) {
+      const isValidTarget = validAttackTargets.some(target => target.x === x && target.y === y)
 
-    const cell = selectedMap.cells.find(c => c.x === x && c.y === y)
-
-    // Can't move to blocked cells
-    if (cell?.type === 'blocked') {
-      alert('Cannot move to a blocked cell!')
-      return
-    }
-
-    const isValidMove = validMoveSpaces.some(space => space.x === x && space.y === y)
-
-    if (!isValidMove) {
-      alert(`Cannot move there! Movement range is ${pendingMovement}.`)
-      return
-    }
-
-    // Execute the movement
-    const currentPlayer = players[currentPlayerIndex]
-    setActionLog(prev => [...prev, `${currentPlayer.name} moved from (${currentPlayer.x},${currentPlayer.y}) to (${x},${y})`])
-
-    const updatedPlayers = players.map((player, idx) => {
-      if (idx === currentPlayerIndex) {
-        return { ...player, x, y }
+      if (!isValidTarget) {
+        alert('No valid target at that location!')
+        return
       }
-      return player
-    })
 
-    setPlayers(updatedPlayers)
-    setPendingMovement(null)
-    setValidMoveSpaces([])
+      // Find the target player(s) at this location
+      const targetPlayers = players.filter((p, idx) => p.x === x && p.y === y && idx !== currentPlayerIndex)
 
-    // Next player's turn
-    setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+      if (targetPlayers.length === 0) {
+        alert('No valid target at that location!')
+        return
+      }
+
+      const currentPlayer = players[currentPlayerIndex]
+      targetPlayers.forEach(target => {
+        setActionLog(prev => [...prev, `${currentPlayer.name} attacks ${target.name} for ${pendingAttack} damage!`])
+      })
+
+      setPendingAttack(null)
+      setValidAttackTargets([])
+
+      // Next player's turn
+      setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+      return
+    }
+
+    // Handle pending movement
+    if (pendingMovement !== null) {
+      const cell = selectedMap.cells.find(c => c.x === x && c.y === y)
+
+      // Can't move to blocked cells
+      if (cell?.type === 'blocked') {
+        alert('Cannot move to a blocked cell!')
+        return
+      }
+
+      const isValidMove = validMoveSpaces.some(space => space.x === x && space.y === y)
+
+      if (!isValidMove) {
+        alert(`Cannot move there! Movement range is ${pendingMovement}.`)
+        return
+      }
+
+      // Execute the movement
+      const currentPlayer = players[currentPlayerIndex]
+      setActionLog(prev => [...prev, `${currentPlayer.name} moved from (${currentPlayer.x},${currentPlayer.y}) to (${x},${y})`])
+
+      const updatedPlayers = players.map((player, idx) => {
+        if (idx === currentPlayerIndex) {
+          return { ...player, x, y }
+        }
+        return player
+      })
+
+      setPlayers(updatedPlayers)
+      setPendingMovement(null)
+      setValidMoveSpaces([])
+
+      // Next player's turn
+      setCurrentPlayerIndex((currentPlayerIndex + 1) % players.length)
+      return
+    }
   }
 
   const handleBeginGame = () => {
@@ -189,9 +220,24 @@ function GamePlay({ maps, cards }: GamePlayProps) {
         return { player, requiresInput: true }
       }
 
-      case 'attack':
-        setActionLog(prev => [...prev, `${player.name} attacks for ${action.value} damage!`])
-        break
+      case 'attack': {
+        // Find all other players as valid attack targets
+        const targets = players
+          .map((p, idx) => ({ player: p, index: idx }))
+          .filter(({ index }) => index !== currentPlayerIndex)
+          .map(({ player }) => ({ x: player.x, y: player.y }))
+
+        if (targets.length === 0) {
+          setActionLog(prev => [...prev, `${player.name} has no valid targets to attack!`])
+          return { player, requiresInput: false }
+        }
+
+        const attackValue = typeof action.value === 'number' ? action.value : parseInt(action.value as string) || 0
+        setPendingAttack(attackValue)
+        setValidAttackTargets(targets)
+        setActionLog(prev => [...prev, `${player.name} prepares to attack for ${attackValue} damage. Click a target.`])
+        return { player, requiresInput: true }
+      }
 
       case 'heal':
         setActionLog(prev => [...prev, `${player.name} heals for ${action.value} HP!`])
@@ -212,9 +258,14 @@ function GamePlay({ maps, cards }: GamePlayProps) {
   const handlePlayCard = (card: Card) => {
     if (!gameStarted || players.length === 0) return
 
-    // Don't allow playing cards if there's already a pending movement
+    // Don't allow playing cards if there's already a pending action
     if (pendingMovement !== null) {
       alert('Complete the current movement action first!')
+      return
+    }
+
+    if (pendingAttack !== null) {
+      alert('Complete the current attack action first!')
       return
     }
 
@@ -333,14 +384,17 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                   const cell = getCellAtPosition(x, y)
                   const cellPlayers = getPlayersAtPosition(x, y)
                   const isValidMoveSpace = validMoveSpaces.some(space => space.x === x && space.y === y)
+                  const isValidAttackTarget = validAttackTargets.some(target => target.x === x && target.y === y)
 
                   return (
                     <div
                       key={`${x}-${y}`}
-                      className={`game-cell ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''}`}
+                      className={`game-cell ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''} ${isValidAttackTarget ? 'valid-attack' : ''}`}
                       style={{
                         backgroundColor: isValidMoveSpace
                           ? '#e3f2fd'
+                          : isValidAttackTarget
+                          ? '#ffebee'
                           : (cell ? cellTypeColors[cell.type] : cellTypeColors.empty)
                       }}
                       onClick={() => handleCellClick(x, y)}
@@ -383,6 +437,7 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                     const cell = getCellAtPosition(x, y)
                     const cellPlayers = getPlayersAtPosition(x, y)
                     const isValidMoveSpace = validMoveSpaces.some(space => space.x === x && space.y === y)
+                    const isValidAttackTarget = validAttackTargets.some(target => target.x === x && target.y === y)
 
                     return (
                       <div
@@ -392,10 +447,12 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                         title={`(${x}, ${y})`}
                       >
                         <div
-                          className={`game-hex-inner ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''}`}
+                          className={`game-hex-inner ${gameStarted ? 'clickable' : ''} ${isValidMoveSpace ? 'valid-move' : ''} ${isValidAttackTarget ? 'valid-attack' : ''}`}
                           style={{
                             backgroundColor: isValidMoveSpace
                               ? '#e3f2fd'
+                              : isValidAttackTarget
+                              ? '#ffebee'
                               : (cell ? cellTypeColors[cell.type] : cellTypeColors.empty)
                           }}
                         >
@@ -559,7 +616,8 @@ function GamePlay({ maps, cards }: GamePlayProps) {
                 <h4>Instructions</h4>
                 <ul>
                   <li>Click a card to play it on the current player</li>
-                  <li>Movement cards highlight valid spaces - click to move</li>
+                  <li>Movement cards highlight valid spaces in blue - click to move</li>
+                  <li>Attack cards highlight targets in red - click to attack</li>
                   <li>Cannot move to blocked cells</li>
                   <li>Turn passes after completing an action</li>
                   <li>Players can only move using movement cards</li>
